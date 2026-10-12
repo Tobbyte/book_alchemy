@@ -9,23 +9,15 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from typing import TYPE_CHECKING
 
 
-### linter hacking
-# hack to make the linter happy: normally Author(db.Model) would be fine
-# sql_alchemy, but then the linter doesn't know the class params.
 class Base(DeclarativeBase):
     pass
 
 
-db = SQLAlchemy()
-
-if TYPE_CHECKING:
-    Model = Base
-else:
-    Model = db.Model
-### /linter hacking
+db = SQLAlchemy(model_class=Base)
 
 
-class Author(Model):
+class Author(Base):
+    __tablename__ = "author"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(db.String(100))
     birth_date: Mapped[date]
@@ -38,11 +30,14 @@ class Author(Model):
         return self.__str__()
 
 
-class Book(db.Model):
+class Book(Base):
+    __tablename__ = "book"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    isbn: Mapped[str] = mapped_column(db.String(13), unique=True)
+    isbn: Mapped[str] = mapped_column(
+        db.String(13), unique=True, nullable=True
+    )
     title: Mapped[str] = mapped_column(db.String(200))
-    publication_year: Mapped[int] = mapped_column(db.Integer)
+    publication_year: Mapped[int] = mapped_column(db.Integer, nullable=True)
     author_id: Mapped[int] = mapped_column(
         db.Integer, db.ForeignKey("author.id")
     )
