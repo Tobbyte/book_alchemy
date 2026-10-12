@@ -9,6 +9,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 from data_models import Author, Book, db
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from werkzeug import Response
 from dotenv import load_dotenv
 from helpers import validate_int, validate_date
@@ -67,7 +68,12 @@ class BookAlchemyApp:
 
     def index(self) -> str:
         return render_template(
-            "home.html", books=db.session.scalars(select(Book)).all()
+            "home.html",
+            books=db.session.scalars(
+                select(Book).options(joinedload(Book.author))
+                # note to self: the option joinedload is used to eager load the author relationship,
+                # so that we don't have to make a separate query for each book's author when rendering the template.
+            ).all(),
         )
 
     def add_author(self) -> str | Response:

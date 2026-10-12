@@ -4,7 +4,7 @@
 from datetime import date
 
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from typing import TYPE_CHECKING
 
@@ -41,6 +41,7 @@ class Book(Base):
     author_id: Mapped[int] = mapped_column(
         db.Integer, db.ForeignKey("author.id")
     )
+    author: Mapped["Author"] = relationship()
 
     def __str__(self) -> str:
         return f"<Book {self.title}>"
