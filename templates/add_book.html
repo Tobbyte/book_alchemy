@@ -17,5 +17,11 @@
         <input type="text" id="isbn" name="isbn">
         <button type="submit">Add Book</button>
     </form>
-
+<br>
+<br>
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for category, message in messages %}
+<div class="flash {{ category }}">{{ message }}</div>
+{% endfor %}
+{% endwith %}
 {% endblock %}

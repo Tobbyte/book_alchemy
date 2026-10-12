@@ -35,7 +35,7 @@ class Book(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     isbn: Mapped[str] = mapped_column(
         db.String(13), unique=True, nullable=True
-    )
+    )  # str for easy char length constraint
     title: Mapped[str] = mapped_column(db.String(200))
     publication_year: Mapped[int] = mapped_column(db.Integer, nullable=True)
     author_id: Mapped[int] = mapped_column(
