@@ -80,10 +80,11 @@ class BookAlchemyApp:
     route handling and only basic validations.
     I will come back to this to clean up for my portfolio, but for
     this codio, I hope you can accept this as a working solution.
-    (https://cdn-v2.meme.com/memes/aint-nobody-got-time/aint-nobody-got-time-dismissive-expression.webp)
+    (https://cdn-v2.meme.com/memes/aint-nobody-got-time/
+    aint-nobody-got-time-dismissive-expression.webp)
     """
 
-    def __init__(self, app: Flask) -> None:
+    def __init__(self, app: Flask) -> None:  # pylint: disable=redefined-outer-name
         """Init main app with db and routes."""
         app.config["SQLALCHEMY_DATABASE_URI"] = DB_PATH
         super_secret_key = os.getenv(

@@ -27,7 +27,7 @@ class GoogleBooksUnavailableError(Exception):
     """The Google Books API could not be reached or kept failing."""
 
 
-def search_book_google(title: str) -> dict[str, Any] | None:
+def search_book_google(title: str) -> dict[str, Any] | None:  # pylint: disable=too-many-locals
     """Search for a book by title using the Google Books API."""
     url = GOOGLE_BOKS_API_URL
     google_books_api_key = os.getenv(
