@@ -28,7 +28,7 @@ Create a `.env` file in the project root:
 
 ```env
 SECRET_KEY=replace-with-a-random-secret
-GOOGLE_BOOKS_API_KEY=your-google-books-api-key
+GOOGLE_BOOKS_API_KEY=your-google-books-api-key (optional, works without!)
 ```
 
 `SECRET_KEY` is required for Flask session and flash-message support. The Google
