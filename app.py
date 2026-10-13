@@ -1,4 +1,20 @@
-"""BookAlchemy Flask App."""
+"""BookAlchemy Flask App.
+
+Limitations:
+    - only one author per book
+    - no validation for duplicate authors or title when adding manually
+    - when authors automatically added via search, only name is filled.
+      Requesting additional author info (birth date, death date) is out
+      would need another api and is of scope for this project.
+    - cover images only from search by api
+
+    Dear reviewer: Since not explicitly requested, there's no error
+    route handling and only basic validations.
+    I will come back to this to clean up for my portfolio, but for
+    this codio, I hope you can accept this as a working solution.
+    (https://cdn-v2.meme.com/memes/aint-nobody-got-time/
+    aint-nobody-got-time-dismissive-expression.webp)
+"""
 
 import os
 from datetime import date
@@ -69,21 +85,6 @@ class BookAlchemyApp:
     When searching, the first result is used.
     If the author is not in the database, it will be added
     automatically.
-
-    Limitations:
-    - only one author per book
-    - no validation for duplicate authors or title when adding manually
-    - when authors automatically added via search, only name is filled.
-      Requesting additional author info (birth date, death date) is out
-      would need another api and is of scope for this project.
-    - cover images only from search by api
-
-    Dear reviewer: Since not explicitly requested, there's no error
-    route handling and only basic validations.
-    I will come back to this to clean up for my portfolio, but for
-    this codio, I hope you can accept this as a working solution.
-    (https://cdn-v2.meme.com/memes/aint-nobody-got-time/
-    aint-nobody-got-time-dismissive-expression.webp)
     """
 
     def __init__(self, app: Flask) -> None:  # pylint: disable=redefined-outer-name
