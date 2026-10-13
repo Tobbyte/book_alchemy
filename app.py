@@ -7,6 +7,7 @@ from typing import Any
 from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, request, url_for
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import contains_eager
 from werkzeug import Response
 
@@ -19,6 +20,7 @@ from config import (
     FLASH_BOOK_DELETED,
     FLASH_ERR_BOOK_NOT_FOUND,
     FLASSH_ERR_NO_RESULT,
+    ISBN_ALREADY_IN_DB,
     KEY_NOT_SET_ERR,
     PUBLICATION_YEAR_LENGTH,
 )
@@ -349,7 +351,13 @@ class BookAlchemyApp:
         )
 
         self.db.session.add(new_book)
-        self.db.session.commit()
+        try:
+            self.db.session.commit()
+        except IntegrityError as e:
+            self.db.session.rollback()
+            if "UNIQUE constraint failed: book.isbn" in str(e):
+                raise ValidationError([ISBN_ALREADY_IN_DB]) from None
+            raise
 
         return new_book
 

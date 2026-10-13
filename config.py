@@ -23,3 +23,4 @@ ISBN_INVALID = "{isbn} must be 10 or 13 digits long (ISBN-10 may end with X)."
 FILED_NAME_MUST_BE_VALID_DATE = (
     "{field_name} must be valid date in format YYYY-MM-DD."
 )
+ISBN_ALREADY_IN_DB = "ISBN already in db."
