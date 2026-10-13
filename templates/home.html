@@ -7,7 +7,11 @@
         {% if book.cover_image_url %}
         <img src="{{ book.cover_image_url }}" alt="Cover of {{ book.title }}">
         {% endif %}
-        <h3>{{ book.title }}, {{ book.author.name }}</h3>
+        <h3>
+            {{ book.title }}
+            {{ book.author.name }}
+        </h3>
+        isbn: {{ book.isbn or "–" }}
     </div>
     {% endfor %}
 
