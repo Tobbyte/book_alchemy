@@ -2,6 +2,11 @@
 {% block content %}
 
 <h1>Book List</h1>
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for category, message in messages %}
+<div class="flash {{ category }}">{{ message }}</div>
+{% endfor %}
+{% endwith %}
 <div class="sort">
     <span>Sort by</span>
     <a href="{{ url_for('index', sort='title') }}" class="{{ 'active' if sort == 'title' }}">Title</a>
@@ -42,6 +47,9 @@
                 <dt>Died</dt>
                 <dd>{{ book.author.date_of_death or "–" }}</dd>
             </dl>
+            <form class="delete-form" action="{{ url_for('delete_book', book_id=book.id) }}" method="post">
+                <button type="submit">Delete Book</button>
+            </form>
             </details>
             {% else %}
             <p>No books yet. <a href="{{ url_for('add_book') }}">Add one.</a></p>

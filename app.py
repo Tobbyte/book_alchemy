@@ -110,6 +110,12 @@ class BookAlchemyApp:
             methods=["GET", "POST"],
         )
 
+        self.app.add_url_rule(
+            "/book/<int:book_id>/delete",
+            view_func=self.delete_book,
+            methods=["POST"],
+        )
+
     def index(self) -> str:
         sort = request.args.get("sort", "title")
 
@@ -165,6 +171,28 @@ class BookAlchemyApp:
             return self.handle_book_search(search_query)
 
         return self.render_add_book_form()
+
+    def delete_book(self, book_id: int) -> Response:
+        book = db.session.get(Book, book_id)
+        if book is None:
+            flash("Book not found.", "error")
+            return redirect(url_for("index"))
+
+        book_title = book.title
+        author = book.author
+        has_other_books = db.session.scalar(
+            select(Book.id)
+            .where(Book.author_id == book.author_id, Book.id != book.id)
+            .limit(1)
+        ) is not None
+
+        db.session.delete(book)
+        if not has_other_books:
+            db.session.delete(author)
+        db.session.commit()
+
+        flash(f'Book "{book_title}" was deleted.', "success")
+        return redirect(url_for("index"))
 
     def handle_book_search(self, search_query: str) -> str | Response:
         try:
