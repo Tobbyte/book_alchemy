@@ -25,3 +25,17 @@ FILED_NAME_MUST_BE_VALID_DATE = (
     "{field_name} must be valid date in format YYYY-MM-DD."
 )
 ISBN_ALREADY_IN_DB = "ISBN already in db."
+
+MAX_RETRIES = 5
+RETRY_DELAY = 0.5
+GOOGLE_BOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"
+GOOGLE_API_STATUS_503 = 503
+GOOGLE_API_MAX_RESULTS = 10
+ERR_MSG_GOOGLE_RETUREND_503 = (
+    "Google Books API returned 503 (attempt {attempt})."
+)
+ERR_NO_BOOKS_FOUND_FOR_TITLE = "No books found matching that title."
+GOOGLE_API_REQUEST_FAILD = "Google Books API Request failed: {e}"
+GOOGLE_API_UNAVAIULABLE = (
+    "Google Books is temporarily unavailable (tried {attempts}x)."
+)

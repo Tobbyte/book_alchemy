@@ -7,21 +7,20 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 
+from config import (
+    ERR_MSG_GOOGLE_RETUREND_503,
+    ERR_NO_BOOKS_FOUND_FOR_TITLE,
+    GOOGLE_API_MAX_RESULTS,
+    GOOGLE_API_REQUEST_FAILD,
+    GOOGLE_API_STATUS_503,
+    GOOGLE_API_UNAVAIULABLE,
+    GOOGLE_BOKS_API_URL,
+    MAX_RETRIES,
+    RETRY_DELAY,
+)
+
 load_dotenv()
 
-MAX_RETRIES = 5
-RETRY_DELAY = 0.5
-GOOGLE_BOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"
-GOOGLE_API_STATUS_503 = 503
-GOOGLE_API_MAX_RESULTS = 10
-ERR_MSG_GOOGLE_RETUREND_503 = (
-    "Google Books API returned 503 (attempt {attempt})."
-)
-ERR_NO_BOOKS_FOUND_FOR_TITLE = "No books found matching that title."
-GOOGLE_API_REQUEST_FAILD = "Google Books API Request failed: {e}"
-GOOGLE_API_UNAVAIULABLE = (
-    "Google Books is temporarily unavailable (tried {attempts}x)."
-)
 
 
 class GoogleBooksUnavailableError(Exception):
