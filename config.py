@@ -4,7 +4,8 @@ from pathlib import Path
 
 PUBLICATION_YEAR_LENGTH = 4
 PROJECT_ROOT = Path(__file__).parent.resolve()
-DB_PATH = f"sqlite:///{PROJECT_ROOT / 'data/library.sqlite'}"
+DB_PATH = PROJECT_ROOT / "data" / "library.sqlite"
+DB_PATH.parent.mkdir(exist_ok=True)
 KEY_NOT_SET_ERR = "Key not set"
 FLASH_ERR_BOOK_NOT_FOUND = "Book not found."
 FLASH_BOOK_ADDED = 'Book "{book_title}" was added.'

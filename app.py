@@ -89,7 +89,7 @@ class BookAlchemyApp:
 
     def __init__(self, app: Flask) -> None:  # pylint: disable=redefined-outer-name
         """Init main app with db and routes."""
-        app.config["SQLALCHEMY_DATABASE_URI"] = DB_PATH
+        app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
         super_secret_key = os.getenv(
             "SECRET_KEY",
         )  # needed for session (flash messages)
