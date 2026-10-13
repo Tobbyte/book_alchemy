@@ -13,6 +13,8 @@ from werkzeug import Response
 from data_models import Author, Book, db
 from google_books_api import GoogleBooksUnavailableError, search_book_google
 from helpers import validate_date, validate_int
+from sqlalchemy import func, select
+from sqlalchemy.orm import contains_eager
 
 load_dotenv()
 
@@ -109,14 +111,22 @@ class BookAlchemyApp:
         )
 
     def index(self) -> str:
-        return render_template(
-            "home.html",
-            books=db.session.scalars(
-                select(Book).options(joinedload(Book.author))
-                # note to self: the option joinedload is used to eager load the author relationship,
-                # so that we don't have to make a separate query for each book's author when rendering the template.
-            ).all(),
-        )
+        sort = request.args.get("sort", "title")
+
+        if sort == "author":
+            # title is tie-breaker
+            order_by = (func.lower(Author.name), func.lower(Book.title))
+        else:
+            sort = "title"
+            order_by = (func.lower(Book.title),)
+
+        books = db.session.scalars(
+            select(Book)
+            .join(Book.author)
+            .options(contains_eager(Book.author))
+            .order_by(*order_by)
+        ).all()
+        return render_template("home.html", books=books, sort=sort)
 
     def add_author(self) -> str | Response:
         if request.method == "POST":
