@@ -45,7 +45,7 @@ def search_book_google(title: str) -> dict[str, Any] | None:  # pylint: disable=
                 break
             print(
                 ERR_MSG_GOOGLE_RETUREND_503.format(
-                    attempt=attempts / MAX_RETRIES + 1,
+                    attempt=attempt,
                 ),
             )
             if attempt < MAX_RETRIES:
