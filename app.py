@@ -12,7 +12,7 @@ from werkzeug import Response
 
 from data_models import Author, Book, db
 from google_books_api import GoogleBooksUnavailableError, search_book_google
-from helpers import validate_date, validate_int
+from helpers import validate_date, validate_int, validate_isbn
 from sqlalchemy import func, select
 from sqlalchemy.orm import contains_eager
 
@@ -261,7 +261,7 @@ class BookAlchemyApp:
     def add_book_to_db(self, form_data: Any) -> Book:
         title = as_clean_str(form_data.get("title"))
         author_id = as_clean_str(form_data.get("author_id"))
-        isbn = as_clean_str(form_data.get("isbn"))
+        isbn = as_clean_str(form_data.get("isbn")).replace("-", "")
         publication_year = as_clean_str(form_data.get("publication_year"))
         cover_image_url = as_clean_str(form_data.get("cover_image_url"))
 
@@ -275,9 +275,6 @@ class BookAlchemyApp:
         errors: list[str | None] = [
             None if title else "Title is required.",
             None if author else "Author does not exist.",
-            "ISBN must be either 10 or 13 digits long."
-            if isbn and len(isbn) not in (10, 13)
-            else None,
             "Publication Year must be a 4-digit year."
             if publication_year and len(publication_year) != 4
             else None,
@@ -287,7 +284,7 @@ class BookAlchemyApp:
                 max_length=4,
                 nullable=True,
             ),
-            validate_int(isbn, "ISBN", max_length=13, nullable=True),
+            validate_isbn(isbn, "ISBN", nullable=True),
         ]
         raise_if_errors(errors)
 
@@ -314,8 +311,7 @@ class BookAlchemyApp:
         # bundle possible errors to show all at once
         errors: list[str | None] = [
             None if name else "Name is required.",
-            None if birth_date else "Birth date is required.",
-            validate_date(birth_date, "Birth Date", nullable=True),
+            validate_date(birth_date, "Birth Date"),
             validate_date(date_of_death, "Date of Death", nullable=True),
         ]
 
