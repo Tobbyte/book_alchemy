@@ -5,7 +5,7 @@ A small Flask app for building and browsing a personal book shelf.
 ## Features
 
 - View, search, and sort books by title or author
-- Add books manually or find the first matching result through Google Books
+- Add books manually or choose from Google Books API search.
 - Add author details
 - Delete books and remove authors who no longer have any books
 - Store data locally in SQLite
@@ -48,8 +48,7 @@ The application creates the SQLite tables on startup. The database is stored at
 ## How to use
 
 1. Open **Add Author** to add an author and optional date-of-death information.
-2. Open **Add Book** to enter a book manually, or search for a title and add the
-   first Google Books result to your shelf.
+2. Open **Add Book** to enter a book manually, or search for a title and choose a result to add to your shelf.
 3. Use the home page to search, sort, inspect, or delete books.
 
 ## Project structure
@@ -68,7 +67,7 @@ data/library.sqlite    Local application database
 ## Notes
 
 - Each book supports only one author.
-- Google Books searches use the first matching result.
+- Google Books searches display up to 10 matching results.
 - Google Books doesn't provide author details except name.
 - The built-in Flask server is intended for local development, not production
   deployment.

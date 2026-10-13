@@ -13,6 +13,7 @@ MAX_RETRIES = 5
 RETRY_DELAY = 0.5
 GOOGLE_BOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"
 GOOGLE_API_STATUS_503 = 503
+GOOGLE_API_MAX_RESULTS = 10
 ERR_MSG_GOOGLE_RETUREND_503 = (
     "Google Books API returned 503 (attempt {attempt})."
 )
@@ -27,13 +28,17 @@ class GoogleBooksUnavailableError(Exception):
     """The Google Books API could not be reached or kept failing."""
 
 
-def search_book_google(title: str) -> dict[str, Any] | None:  # pylint: disable=too-many-locals
+def search_book_google(title: str) -> list[dict[str, Any]] | None:
     """Search for a book by title using the Google Books API."""
     url = GOOGLE_BOKS_API_URL
     google_books_api_key = os.getenv(
         "GOOGLE_BOOKS_API_KEY",
     )  # optional, stored in .env
-    params = {"q": title, "key": google_books_api_key}
+    params = {
+        "q": title,
+        "key": google_books_api_key,
+        "maxResults": GOOGLE_API_MAX_RESULTS,
+    }
 
     attempts = 0
     try:
@@ -58,30 +63,40 @@ def search_book_google(title: str) -> dict[str, Any] | None:  # pylint: disable=
             print(ERR_NO_BOOKS_FOUND_FOR_TITLE)
             return None
 
-        # use first match
-        volume_info = data["items"][0]["volumeInfo"]
+        results = []
+        for item in data["items"][:GOOGLE_API_MAX_RESULTS]:
+            volume_info = item["volumeInfo"]
+            book_title = volume_info.get("title", "Unknown Title")
+            author = volume_info.get("authors", ["Unknown Author"])[0]
+            published_date = volume_info.get("publishedDate")
+            publication_year = (
+                # comes as YYYY-MM-DD from api, split for year only
+                published_date.split("-")[0] if published_date else None
+            )
 
-        book_title = volume_info.get("title", "Unknown Title")
-        author = volume_info.get("authors", ["Unknown Author"])[0]
-        published_date = volume_info.get("publishedDate")
-        publication_year = (
-            # comes as YYYY-MM-DD from api, split for year only
-            published_date.split("-")[0] if published_date else None
-        )
+            isbn = None
+            identifiers = volume_info.get("industryIdentifiers", [])
+            for id_type in identifiers:
+                if id_type.get("type") in ["ISBN_13", "ISBN_10"]:
+                    isbn = id_type.get("identifier")
+                    if id_type.get("type") == "ISBN_13":
+                        break
 
-        isbn = None
-        identifiers = volume_info.get("industryIdentifiers", [])
-        for id_type in identifiers:
-            if id_type.get("type") in ["ISBN_13", "ISBN_10"]:
-                isbn = id_type.get("identifier")
-                if id_type.get("type") == "ISBN_13":
-                    break
+            image_links = volume_info.get("imageLinks", {})
+            cover_url = image_links.get(
+                "thumbnail",
+                image_links.get("smallThumbnail", ""),
+            )
 
-        image_links = volume_info.get("imageLinks", {})
-        cover_url = image_links.get(
-            "thumbnail",
-            image_links.get("smallThumbnail", ""),
-        )
+            results.append(
+                {
+                    "title": book_title,
+                    "author": author,
+                    "publication_year": publication_year,
+                    "isbn": isbn,
+                    "cover_image_url": cover_url,
+                },
+            )
 
     except (requests.exceptions.RequestException, ValueError) as e:
         # ValueError: response body was not valid JSON
@@ -90,13 +105,7 @@ def search_book_google(title: str) -> dict[str, Any] | None:  # pylint: disable=
             GOOGLE_API_UNAVAIULABLE.format(attempts=attempts),
         ) from None  # hide e, the request would include API key!
 
-    return {
-        "title": book_title,
-        "author": author,
-        "publication_year": publication_year,
-        "isbn": isbn,
-        "cover_image_url": cover_url,
-    }
+    return results
 
 
 # DEBUG
@@ -111,7 +120,9 @@ if __name__ == "__main__":
         book_info = None
 
     if book_info:
-        print(f"Title:       {book_info['title']}")
-        print(f"Author:      {book_info['author']}")
-        print(f"ISBN:        {book_info['isbn']}")
-        print(f"Cover URL:   {book_info['cover_image_url']}")
+        for book in book_info:
+            print(f"Title:       {book['title']}")
+            print(f"Author:      {book['author']}")
+            print(f"ISBN:        {book['isbn']}")
+            print(f"Cover URL:   {book['cover_image_url']}")
+            print()

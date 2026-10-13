@@ -82,7 +82,6 @@ class BookAlchemyApp:
     """BookAlchemy Flask App.
 
     Add books manually or search for them via Google Books API.
-    When searching, the first result is used.
     If the author is not in the database, it will be added
     automatically.
     """
@@ -252,7 +251,7 @@ class BookAlchemyApp:
         return render_template(
             "add_book.html",
             authors=self.get_all_authors(),
-            search_results=[result],
+            search_results=result,
             search_query=search_query,
         )
 
