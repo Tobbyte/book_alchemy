@@ -406,4 +406,4 @@ if __name__ == "__main__":
     book_alchemy.create_tables()
     # book_alchemy.run(debug=True)  # noqa: ERA001
     # codio needs host binding.
-    book_alchemy.run(debug=True, host="0.0.0.0")  # noqa: S104
+    book_alchemy.run(debug=True, port=5002, host="0.0.0.0")  # noqa: S104
