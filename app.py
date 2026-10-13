@@ -1,30 +1,56 @@
 # ruff: noqa
-"""Asd."""
-from datetime import date
-import os
-from typing import Any
-import json
-from flask import Flask, flash, redirect, render_template, request, url_for
-from flask_sqlalchemy import SQLAlchemy
 
-from data_models import Author, Book, db
+import os
+from datetime import date
+from typing import Any
+
+from dotenv import load_dotenv
+from flask import Flask, flash, redirect, render_template, request, url_for
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from werkzeug import Response
-from dotenv import load_dotenv
-from helpers import (
-    validate_int,
-    validate_date,
-)
-from google_books_api import search_book_google
+
+from data_models import Author, Book, db
+from google_books_api import GoogleBooksUnavailableError, search_book_google
+from helpers import validate_date, validate_int
 
 load_dotenv()
+
+
+class ValidationError(Exception):
+    """Bundles all validation errors of a form."""
+
+    def __init__(self, errors: list[str]) -> None:
+        super().__init__(errors)
+        self.errors = errors
+
+
+def raise_if_errors(errors: list[str | None]) -> None:
+    """Raise a ValidationError if at least one error is present.
+
+    The validate_* functions return None/"" for valid values, so empty
+    entries are filtered out here.
+    """
+    real_errors = [err for err in errors if err]
+    if real_errors:
+        raise ValidationError(real_errors)
+
+
+def as_clean_str(value: Any) -> str:
+    """Convert a form/JSON value to a stripped string ("" for None)."""
+    return "" if value is None else str(value).strip()
+
+
+def flash_errors(errors: list[str]) -> None:
+    for msg in errors:
+        flash(msg, "error")
+
 
 class BookAlchemyApp:
     """Asd.
 
     When searching for a book and the author is not in the database,
-    the author will be added automatically to db.
+    the author will be added automatically to db (name only).
 
     Limitations:
     - only one author per book
@@ -32,6 +58,7 @@ class BookAlchemyApp:
     - when authors automatically added via search, only name is populated.
       Requesting additional author info (birth date, death date) is out of
       scope for this project.
+    - cover images only from search by api
     """
 
     def __init__(self, app: Flask):
@@ -56,12 +83,12 @@ class BookAlchemyApp:
         self.db = db
         self.register_routes()
 
-    def create_tables(self):
+    def create_tables(self) -> None:
         """Asd."""
         with self.app.app_context():
             self.db.create_all()
 
-    def register_routes(self):
+    def register_routes(self) -> None:
         """Asd."""
         self.app.add_url_rule(
             "/",
@@ -92,177 +119,120 @@ class BookAlchemyApp:
         )
 
     def add_author(self) -> str | Response:
-        # Logic to add an author to the database
         if request.method == "POST":
             try:
                 new_author = self.add_author_to_db(request.form)
-            except Exception as e:
-                # if fields have errors, err messages are returned
-                for msg in e.args[0]:
-                    flash(msg, "error")
-                return redirect(url_for("add_author"))
-
-            flash(f"Autor {new_author.name} wurde hinzugefügt.", "success")  # pyright: ignore[reportOptionalMemberAccess]
+            except ValidationError as err:
+                flash_errors(err.errors)
+            else:
+                flash(f"Author {new_author.name} was added.", "success")
             return redirect(url_for("add_author"))
 
         return render_template("add_author.html")
 
-    def add_author_to_db(self, form_data: dict[str, Any]) -> None | Author:
-        """Add an author to the database."""
-        name = form_data.get("name", "").strip()
-        birth_date = form_data.get("birthdate", "").strip()
-        date_of_death = form_data.get("date_of_death", "").strip()
-
-        if not name or not birth_date:
-            # Handle missing required fields
-            err_msg = "Name and birth date are required."
-            raise ValueError(err_msg)
-
-        # bundle possible errors to show all at once
-        errors = [
-            err
-            for err in [
-                validate_date(birth_date, "Birth Date", nullable=True),
-                validate_date(date_of_death, "Date of Death", nullable=True),
-            ]
-        ]
-        if any(errors):
-            raise ValueError(errors)
-
-        new_author = Author(
-            name=name,
-            birth_date=date.fromisoformat(birth_date),
-            date_of_death=date_of_death or None,
-        )
-
-        self.db.session.add(new_author)
-        self.db.session.commit()
-
-        return new_author
-
     def add_book(self) -> str | Response:
-        # Logic to add a book to the database
-        all_authors = list(db.session.scalars(select(Author)).all())
+        if request.method == "POST":
+            return self.handle_add_book_post()
+
         search_query = request.args.get("search_query", "").strip()
-
         if search_query:
-            search_result = search_book_google(search_query)
-            search_results = [search_result] if search_result else None
+            return self.handle_book_search(search_query)
 
-            if search_results is None:
-                flash("No books found matching that title.", "error")
-                return redirect(url_for("add_book"))
+        return self.render_add_book_form()
+
+    def handle_book_search(self, search_query: str) -> str | Response:
+        try:
+            result = search_book_google(search_query)
+        except GoogleBooksUnavailableError as err:
+            flash(str(err), "error")
             return render_template(
                 "add_book.html",
-                authors=all_authors,
-                search_results=search_results,
+                authors=self.get_all_authors(),
+                search_failed=True,
                 search_query=search_query,
             )
 
-        if request.method == "POST":
-            request_data = request.form
-            book_data = request_data.get("book_data")
-            if book_data:
-                # If book_data is provided, it means the user selected a book from the search results.
-                # It's not sure if the author is in our db, so we need to check and add the author if necessary.
-                print(f"Book data received: {book_data}")
-                book_data_dict = json.loads(book_data.replace("'", '"'))
-                author = book_data_dict.get("author")
-                known_author = db.session.scalars(
-                    select(Author).where(Author.name == author)
-                ).first()
-                if not known_author:
-                    # If the author is not in the database, add them.
-                    author = Author(
-                        name=author,
-                        birth_date=None,
-                        date_of_death=None,
-                    )
-                    self.db.session.add(author)
-                    self.db.session.commit()
-                title = book_data_dict.get("title")
-                isbn = book_data_dict.get("isbn")
-                if not validate_int(
-                    isbn, "ISBN", max_length=13, nullable=True
-                ):
-                    isbn = None
+        if result is None:
+            flash("No books found matching that title.", "error")
+            return redirect(url_for("add_book"))
 
-                publication_year = book_data_dict.get("publication_year")
-                if not validate_int(
-                    publication_year,
-                    "Publication Year",
-                    max_length=4,
-                    nullable=True,
-                ):
-                    publication_year = None
-                cover_image_url = book_data_dict.get("cover_image_url")
-                if not cover_image_url.startswith("http"):
-                    cover_image_url = None
-                request_data = {
-                    "title": title,
-                    "isbn": isbn,
-                    "publication_year": book_data_dict.get("publication_year"),
-                    "cover_image_url": book_data_dict.get("cover_image_url"),
-                    "author_id": known_author.id
-                    if known_author
-                    else author.id,
-                }
-                print("request_data", request_data)
+        return render_template(
+            "add_book.html",
+            authors=self.get_all_authors(),
+            search_results=[result],
+            search_query=search_query,
+        )
 
-            try:
-                new_book = self.add_book_to_db(request_data)
-            except Exception as e:
-                print(e)
-                # if fields have errors, err messages are returned
-                for msg in e.args[0]:
-                    if msg:
-                        flash(msg, "error")
-                return self.render_add_book_form(authors=all_authors)
+    def handle_add_book_post(self) -> str:
+        """Add a book, either from a search result or from the manual form.
 
-            flash(f"Book {new_book.title} wurde hinzugefügt.", "success")  # pyright: ignore[reportOptionalMemberAccess]
-            return self.render_add_book_form(authors=all_authors)
-
-        return render_template("add_book.html", authors=all_authors)
-
-    def render_add_book_form(self, authors: list[Author]) -> str:
-        """Render the add book form with the list of authors."""
-        return render_template("add_book.html", authors=authors)
-
-    def add_book_to_db(self, form_data: dict[str, Any]) -> None | Book:
-        """Add a book to the database."""
-        title = form_data.get("title", "")
-        author_id = form_data.get("author_id", "")
-        isbn = form_data.get("isbn", "")
-        publication_year = form_data.get("publication_year", "")
-        cover_image_url = form_data.get("cover_image_url")
-
-        if not title or not author_id:
-            err_msg = "Title and author ID are required."
-            raise ValueError(err_msg)
-        # bundle possible errors to show all at once
-        errors = [
-            err
-            for err in [
-                validate_int(
-                    publication_year,
-                    "Publication Year",
-                    max_length=4,
-                    nullable=True,
-                ),
-                validate_int(isbn, "ISBN", max_length=13, nullable=True),
-            ]
-        ]
-        if isbn and len(isbn) not in [10, 13]:
-            errors.append("ISBN must be either 10 or 13 digits long.")
-
-        author_id = db.session.get(Author, author_id)
-        if not author_id:
-            errors.append("Author ID does not exist.")
+        Search results send the author as a name (author_name), the manual
+        form sends the id of an existing author (author_id).
+        """
+        try:
+            form_data = request.form.to_dict()
+            author_name = form_data.get("author_name")
+            if author_name:
+                form_data["author_id"] = str(
+                    self.get_or_create_author(author_name).id
+                )
+            new_book = self.add_book_to_db(form_data)
+        except ValidationError as err:
+            db.session.rollback()  # discard new author
+            flash_errors(err.errors)
         else:
-            author_id = author_id.id
+            flash(f"Book {new_book.title} was added.", "success")
+        return self.render_add_book_form()
 
-        if any(errors):
-            raise ValueError(errors)
+    def get_or_create_author(self, name: str | None) -> Author:
+        name = as_clean_str(name)
+        if not name:
+            raise ValidationError(["Author name is missing."])
+
+        author = db.session.scalars(
+            select(Author).where(Author.name == name)
+        ).first()
+        if author is None:
+            author = Author(name=name, birth_date=None, date_of_death=None)
+            db.session.add(author)
+            db.session.flush()  # assigns the id without committing yet
+        return author
+
+    def get_all_authors(self) -> list[Author]:
+        return list(db.session.scalars(select(Author)).all())
+
+    def render_add_book_form(self) -> str:
+        return render_template("add_book.html", authors=self.get_all_authors())
+
+    def add_book_to_db(self, form_data: Any) -> Book:
+        title = as_clean_str(form_data.get("title"))
+        author_id = as_clean_str(form_data.get("author_id"))
+        isbn = as_clean_str(form_data.get("isbn"))
+        publication_year = as_clean_str(form_data.get("publication_year"))
+        cover_image_url = as_clean_str(form_data.get("cover_image_url"))
+
+        if not cover_image_url.startswith(("http://", "https://")):
+            cover_image_url = ""
+
+        author = db.session.get(Author, author_id) if author_id else None
+
+        # bundle possible errors to show all at once
+
+        errors: list[str | None] = [
+            None if title else "Title is required.",
+            None if author else "Author does not exist.",
+            None
+            if isbn and len(isbn) not in (10, 13)
+            else "ISBN must be either 10 or 13 digits long.",
+            validate_int(
+                publication_year,
+                "Publication Year",
+                max_length=4,
+                nullable=True,
+            ),
+            validate_int(isbn, "ISBN", max_length=13, nullable=True),
+        ]
+        raise_if_errors(errors)
 
         new_book = Book(
             title=title,
@@ -270,14 +240,40 @@ class BookAlchemyApp:
             publication_year=int(publication_year)
             if publication_year
             else None,
-            cover_image_url=cover_image_url,
-            author_id=int(author_id),  # from db, save # pyright: ignore[reportArgumentType]
+            cover_image_url=cover_image_url or None,
+            author_id=author.id,  # save # pyright: ignore[reportOptionalMemberAccess]
         )
 
         self.db.session.add(new_book)
         self.db.session.commit()
 
         return new_book
+
+    def add_author_to_db(self, form_data: Any) -> Author:
+        name = as_clean_str(form_data.get("name"))
+        birth_date = as_clean_str(form_data.get("birthdate"))
+        date_of_death = as_clean_str(form_data.get("date_of_death"))
+
+        # bundle possible errors to show all at once
+        errors: list[str | None] = [
+            None if name else "Name is required.",
+            None if birth_date else "Birth date is required.",
+            validate_date(birth_date, "Birth Date", nullable=True),
+            validate_date(date_of_death, "Date of Death", nullable=True),
+        ]
+
+        raise_if_errors(errors)
+
+        new_author = Author(
+            name=name,
+            birth_date=date.fromisoformat(birth_date),
+            date_of_death=(
+                date.fromisoformat(date_of_death) if date_of_death else None
+            ),
+        )
+        self.db.session.add(new_author)
+        self.db.session.commit()
+        return new_author
 
     def run(self, **kwargs: Any) -> None:  # noqa: ANN401
         """Start the Flask app."""
@@ -293,8 +289,8 @@ class BookAlchemyApp:
 app = Flask(__name__)
 
 if __name__ == "__main__":
-
     book_alchemy = BookAlchemyApp(app)
     book_alchemy.reset_database()
     book_alchemy.create_tables()
-    book_alchemy.run(debug=True, host="0.0.0.0")  # noqa: S104
+    # book_alchemy.run(debug=True, host="0.0.0.0")  # noqa: S104
+    book_alchemy.run(debug=True)  # noqa: S104
