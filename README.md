@@ -9,6 +9,7 @@ A small Flask app for building and browsing a personal book shelf.
 - Add author details
 - Delete books and remove authors who no longer have any books
 - Store data locally in SQLite
+- Click a book to see it's details
 
 ## Setup
 
