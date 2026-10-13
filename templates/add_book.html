@@ -17,6 +17,35 @@
         <input type="text" id="isbn" name="isbn">
         <button type="submit">Add Book</button>
     </form>
+<div class="search_container">
+    <form class="search-form" action="{{ url_for('add_book') }}" method="get">
+        <label class="visually-hidden" for="search_query">book title</label>
+        <input type="text" id="search_query" name="search_query" placeholder="Search for a book to add" required>
+        <button type="submit">Find a book</button>
+    </form>
+</div>
+
+{% if search_results %}
+<div id="search-results"></div>
+<h2>Results for "{{ search_query }}"</h2>
+<ul>
+    {% for book in search_results %}
+    <li>
+        <form action="{{ url_for('add_book') }}" method="post">
+            <input type="hidden" id="book_data" name="book_data" value="{{ book }}">
+            <input type="hidden" id="title" name="book.title" value="{{ book.title }}">
+            <input type="hidden" id="author" name="book.author" value="{{ book.author }}">
+            <input type="hidden" name="book.cover_image_url" value="{{ book.cover_image_url }}">
+
+            <span class="book-title">{{ book.title }}</span>
+            <span class="book-author">{{ book.author }}</span>
+            <button type="submit">Add to shelf</button>
+        </form>
+    </li>
+    {% endfor %}
+</ul>
+</div>
+{% endif %}
 <br>
 <br>
 {% with messages = get_flashed_messages(with_categories=true) %}

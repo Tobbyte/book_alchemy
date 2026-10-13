@@ -20,7 +20,7 @@ class Author(Base):
     __tablename__ = "author"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(db.String(100))
-    birth_date: Mapped[date]
+    birth_date: Mapped[date | None] = mapped_column(nullable=True)
     date_of_death: Mapped[date | None] = mapped_column(nullable=True)
 
     def __str__(self) -> str:
@@ -38,6 +38,9 @@ class Book(Base):
     )  # str for easy char length constraint
     title: Mapped[str] = mapped_column(db.String(200))
     publication_year: Mapped[int] = mapped_column(db.Integer, nullable=True)
+    cover_image_url: Mapped[str | None] = mapped_column(
+        db.String(500), nullable=True
+    )
     author_id: Mapped[int] = mapped_column(
         db.Integer, db.ForeignKey("author.id")
     )

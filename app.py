@@ -3,7 +3,7 @@
 from datetime import date
 import os
 from typing import Any
-
+import json
 from flask import Flask, flash, redirect, render_template, request, url_for
 from flask_sqlalchemy import SQLAlchemy
 
@@ -12,12 +12,27 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from werkzeug import Response
 from dotenv import load_dotenv
-from helpers import validate_int, validate_date
+from helpers import (
+    validate_int,
+    validate_date,
+)
+from google_books_api import search_book_google
 
 load_dotenv()
 
 class BookAlchemyApp:
-    """Asd."""
+    """Asd.
+
+    When searching for a book and the author is not in the database,
+    the author will be added automatically to db.
+
+    Limitations:
+    - only one author per book
+    - no validation for duplicate authors or books (by title)
+    - when authors automatically added via search, only name is populated.
+      Requesting additional author info (birth date, death date) is out of
+      scope for this project.
+    """
 
     def __init__(self, app: Flask):
         """Asd."""
@@ -107,7 +122,7 @@ class BookAlchemyApp:
         errors = [
             err
             for err in [
-                validate_date(birth_date, "Birth Date"),
+                validate_date(birth_date, "Birth Date", nullable=True),
                 validate_date(date_of_death, "Date of Death", nullable=True),
             ]
         ]
@@ -128,9 +143,74 @@ class BookAlchemyApp:
     def add_book(self) -> str | Response:
         # Logic to add a book to the database
         all_authors = list(db.session.scalars(select(Author)).all())
+        search_query = request.args.get("search_query", "").strip()
+
+        if search_query:
+            search_result = search_book_google(search_query)
+            search_results = [search_result] if search_result else None
+
+            if search_results is None:
+                flash("No books found matching that title.", "error")
+                return redirect(url_for("add_book"))
+            return render_template(
+                "add_book.html",
+                authors=all_authors,
+                search_results=search_results,
+                search_query=search_query,
+            )
+
         if request.method == "POST":
+            request_data = request.form
+            book_data = request_data.get("book_data")
+            if book_data:
+                # If book_data is provided, it means the user selected a book from the search results.
+                # It's not sure if the author is in our db, so we need to check and add the author if necessary.
+                print(f"Book data received: {book_data}")
+                book_data_dict = json.loads(book_data.replace("'", '"'))
+                author = book_data_dict.get("author")
+                known_author = db.session.scalars(
+                    select(Author).where(Author.name == author)
+                ).first()
+                if not known_author:
+                    # If the author is not in the database, add them.
+                    author = Author(
+                        name=author,
+                        birth_date=None,
+                        date_of_death=None,
+                    )
+                    self.db.session.add(author)
+                    self.db.session.commit()
+                title = book_data_dict.get("title")
+                isbn = book_data_dict.get("isbn")
+                if not validate_int(
+                    isbn, "ISBN", max_length=13, nullable=True
+                ):
+                    isbn = None
+
+                publication_year = book_data_dict.get("publication_year")
+                if not validate_int(
+                    publication_year,
+                    "Publication Year",
+                    max_length=4,
+                    nullable=True,
+                ):
+                    publication_year = None
+                cover_image_url = book_data_dict.get("cover_image_url")
+                if not cover_image_url.startswith("http"):
+                    cover_image_url = None
+                request_data = {
+                    "title": title,
+                    "isbn": isbn,
+                    "publication_year": book_data_dict.get("publication_year"),
+                    "cover_image_url": book_data_dict.get("cover_image_url"),
+                    "author_id": known_author.id
+                    if known_author
+                    else author.id,
+                }
+                print("request_data", request_data)
+
             try:
-                new_book = self.add_book_to_db(request.form)
+                new_book = self.add_book_to_db(request_data)
             except Exception as e:
                 print(e)
                 # if fields have errors, err messages are returned
@@ -150,10 +230,11 @@ class BookAlchemyApp:
 
     def add_book_to_db(self, form_data: dict[str, Any]) -> None | Book:
         """Add a book to the database."""
-        title = form_data.get("title", "").strip()
-        author_id = form_data.get("author_id", "").strip()
-        isbn = form_data.get("isbn", "").strip()
-        publication_year = form_data.get("publication_year", "").strip()
+        title = form_data.get("title", "")
+        author_id = form_data.get("author_id", "")
+        isbn = form_data.get("isbn", "")
+        publication_year = form_data.get("publication_year", "")
+        cover_image_url = form_data.get("cover_image_url")
 
         if not title or not author_id:
             err_msg = "Title and author ID are required."
@@ -165,12 +246,14 @@ class BookAlchemyApp:
                 validate_int(
                     publication_year,
                     "Publication Year",
-                    length=4,
+                    max_length=4,
                     nullable=True,
                 ),
-                validate_int(isbn, "ISBN", length=13, nullable=True),
+                validate_int(isbn, "ISBN", max_length=13, nullable=True),
             ]
         ]
+        if isbn and len(isbn) not in [10, 13]:
+            errors.append("ISBN must be either 10 or 13 digits long.")
 
         author_id = db.session.get(Author, author_id)
         if not author_id:
@@ -187,6 +270,7 @@ class BookAlchemyApp:
             publication_year=int(publication_year)
             if publication_year
             else None,
+            cover_image_url=cover_image_url,
             author_id=int(author_id),  # from db, save # pyright: ignore[reportArgumentType]
         )
 
@@ -211,6 +295,6 @@ app = Flask(__name__)
 if __name__ == "__main__":
 
     book_alchemy = BookAlchemyApp(app)
-    # book_alchemy.reset_database()
+    book_alchemy.reset_database()
     book_alchemy.create_tables()
     book_alchemy.run(debug=True, host="0.0.0.0")  # noqa: S104
