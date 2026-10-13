@@ -221,3 +221,33 @@ input[type="submit"] {
 .flash.error {
     background: #ffe5e5;
 }
+#search-results ul {
+    list-style: none;
+    padding: 0;
+}
+
+.result-form {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    max-width: 560px;
+}
+
+.result-cover {
+    flex: 0 0 64px;
+    --accent: var(--c1);
+}
+
+.result-cover .cover {
+    border-bottom-width: 3px;
+    margin-bottom: 0;
+}
+
+.result-cover .no-cover {
+    font-size: 0.7rem;
+    text-align: center;
+}
+
+.result-text {
+    flex: 1;
+}

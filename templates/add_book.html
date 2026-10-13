@@ -39,20 +39,31 @@
     <ul>
         {% for book in search_results %}
         <li>
-            <form action="{{ url_for('add_book') }}" method="post">
+            <form class="result-form" action="{{ url_for('add_book') }}" method="post">
                 <input type="hidden" name="author_name" value="{{ book.author }}">
                 <input type="hidden" name="title" value="{{ book.title }}">
                 <input type="hidden" name="isbn" value="{{ book.isbn or '' }}">
                 <input type="hidden" name="publication_year" value="{{ book.publication_year or '' }}">
                 <input type="hidden" name="cover_image_url" value="{{ book.cover_image_url or '' }}">
 
-                <span class="book-title">{{ book.title }}</span>
-                <span class="book-author">{{ book.author }}</span>
+                <div class="result-cover">
+                    {% if book.cover_image_url %}
+                    <img class="cover" src="{{ book.cover_image_url }}" alt="Cover of {{ book.title }}">
+                    {% else %}
+                    <div class="cover no-cover">No cover</div>
+                    {% endif %}
+                </div>
+                
+                <div class="result-text">
+                    <span class="book-title">{{ book.title }}</span>
+                    <span class="book-author">{{ book.author }}</span>
+                </div>
+
                 <button type="submit">Add to shelf</button>
-                </form>
-                </li>
-                {% endfor %}
-                </ul>
+            </form>
+            </li>
+            {% endfor %}
+            </ul>
 </div>
 {% endif %}
 <br>
