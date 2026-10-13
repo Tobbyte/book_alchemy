@@ -9,12 +9,15 @@
 {% endwith %}
 <div class="sort">
     <span>Sort by</span>
-    <a href="{{ url_for('index', sort='title') }}" class="{{ 'active' if sort == 'title' }}">Title</a>
-    <a href="{{ url_for('index', sort='author') }}" class="{{ 'active' if sort == 'author' }}">Author</a>
+    <a href="{{ url_for('index', sort='title', search_query=search_query) }}"
+        class="{{ 'active' if sort == 'title' }}">Title</a>
+    <a href="{{ url_for('index', sort='author', search_query=search_query) }}"
+        class="{{ 'active' if sort == 'author' }}">Author</a>
 </div>
 <div class="search_library">
     <span>Search</span>
     <form class="search-form" action="{{ url_for('index') }}" method="get">
+        <input type="hidden" name="sort" value="{{ sort }}">
         <input type="text" id="search_query" name="search_query" placeholder="Search for a book"
             value="{{ search_query or '' }}">
         <button type="submit">Search</button>
