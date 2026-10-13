@@ -221,9 +221,12 @@ class BookAlchemyApp:
         errors: list[str | None] = [
             None if title else "Title is required.",
             None if author else "Author does not exist.",
-            None
+            "ISBN must be either 10 or 13 digits long."
             if isbn and len(isbn) not in (10, 13)
-            else "ISBN must be either 10 or 13 digits long.",
+            else None,
+            "Publication Year must be a 4-digit year."
+            if publication_year and len(publication_year) != 4
+            else None,
             validate_int(
                 publication_year,
                 "Publication Year",
@@ -290,7 +293,7 @@ app = Flask(__name__)
 
 if __name__ == "__main__":
     book_alchemy = BookAlchemyApp(app)
-    book_alchemy.reset_database()
+    # book_alchemy.reset_database()
     book_alchemy.create_tables()
     # book_alchemy.run(debug=True, host="0.0.0.0")  # noqa: S104
     book_alchemy.run(debug=True)  # noqa: S104
