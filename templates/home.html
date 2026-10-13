@@ -1,20 +1,62 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% block content %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-</head>
-
-<body>
-
+<h1>Book List</h1>
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for category, message in messages %}
+<div class="flash {{ category }}">{{ message }}</div>
+{% endfor %}
+{% endwith %}
+<div class="sort">
+    <span>Sort by</span>
+    <a href="{{ url_for('index', sort='title', search_query=search_query) }}"
+        class="{{ 'active' if sort == 'title' }}">Title</a>
+    <a href="{{ url_for('index', sort='author', search_query=search_query) }}"
+        class="{{ 'active' if sort == 'author' }}">Author</a>
+</div>
+<div class="search_library">
+    <span>Search</span>
+    <form class="search-form" action="{{ url_for('index') }}" method="get">
+        <input type="hidden" name="sort" value="{{ sort }}">
+        <input type="text" id="search_query" name="search_query" placeholder="Search for a book"
+            value="{{ search_query or '' }}">
+        <button type="submit">Search</button>
+    </form>
+    {% if search_query %}
+    <form class="clear-form" action="{{ url_for('index') }}" method="get">
+        <button type="submit">Clear</button>
+    </form>
+    {% endif %}
+</div>
+<div class="book-grid">
     {% for book in books %}
-    <div>
-        <h3>{{ book.title }}</h3>
-    </div>
+    <details class="book c{{ loop.index0 % 5 }}">
+        <summary>
+            {% if book.cover_image_url %}
+            <img class="cover" src="{{ book.cover_image_url }}" alt="Cover of {{ book.title }}">
+            {% else %}
+            <div class="cover no-cover">No cover</div>
+            {% endif %}
+            <span class="book-title">{{ book.title }}</span>
+            <span class="book-author">{{ book.author.name }}</span>
+            </summary>
+            <dl class="book-info">
+                <dt>Year</dt>
+                <dd>{{ book.publication_year or "–" }}</dd>
+                <dt>ISBN</dt>
+                <dd>{{ book.isbn or "–" }}</dd>
+                <dt>Born</dt>
+                <dd>{{ book.author.birth_date or "–" }}</dd>
+                <dt>Died</dt>
+                <dd>{{ book.author.date_of_death or "–" }}</dd>
+            </dl>
+            <form class="delete-form" action="{{ url_for('delete_book', book_id=book.id) }}" method="post">
+                <button type="submit">Delete Book</button>
+            </form>
+            </details>
+            {% else %}
+            <p>No books yet. <a href="{{ url_for('add_book') }}">Add one.</a></p>
     {% endfor %}
+</div>
 
-</body>
-
-</html>
+{% endblock %}

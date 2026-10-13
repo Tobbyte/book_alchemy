@@ -1,18 +1,76 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% block content %}
+    <form action="{{ url_for('add_book') }}" method="POST">
+        <label for="author">Author
+            <select name="author_id" id="author" required>
+                {% for author in authors %}
+                <option value="{{ author.id }}">{{ author.name }}</option>
+                {% endfor %}
+            </select>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-</head>
-
-<body>
-
-    <form action="/add_author" method="POST">
-        <!-- Add the form here -->
+        </label>
+        <label for="title">Title:</label>
+        <input type="text" id="title" name="title" required>
+        <label for="publication_year">Year:</label>
+        <input type="number" id="publication_year" name="publication_year">
+        <label for="isbn">ISBN:</label>
+        <input type="text" id="isbn" name="isbn">
+        <button type="submit">Add Book</button>
     </form>
 
-</body>
+<div class="search_container">
+    <form class="search-form" action="{{ url_for('add_book') }}" method="get">
+        <label class="visually-hidden" for="search_query">book title</label>
+        <input type="text" id="search_query" name="search_query" placeholder="Search for a book to add" required>
+        <button type="submit">Find a book</button>
+    </form>
+</div>
 
-</html>
+{% if search_failed %}
+<form class="retry-form" action="{{ url_for('add_book') }}" method="get">
+    <input type="hidden" name="search_query" value="{{ search_query }}">
+    <button type="submit">Retry search for "{{ search_query }}"</button>
+</form>
+{% endif %}
+
+{% if search_results %}
+<div id="search-results">
+    <h2>Results for "{{ search_query }}"</h2>
+    <ul>
+        {% for book in search_results %}
+        <li>
+            <form class="result-form" action="{{ url_for('add_book') }}" method="post">
+                <input type="hidden" name="author_name" value="{{ book.author }}">
+                <input type="hidden" name="title" value="{{ book.title }}">
+                <input type="hidden" name="isbn" value="{{ book.isbn or '' }}">
+                <input type="hidden" name="publication_year" value="{{ book.publication_year or '' }}">
+                <input type="hidden" name="cover_image_url" value="{{ book.cover_image_url or '' }}">
+
+                <div class="result-cover">
+                    {% if book.cover_image_url %}
+                    <img class="cover" src="{{ book.cover_image_url }}" alt="Cover of {{ book.title }}">
+                    {% else %}
+                    <div class="cover no-cover">No cover</div>
+                    {% endif %}
+                </div>
+                
+                <div class="result-text">
+                    <span class="book-title">{{ book.title }}</span>
+                    <span class="book-author">{{ book.author }}</span>
+                </div>
+
+                <button type="submit">Add to shelf</button>
+            </form>
+            </li>
+            {% endfor %}
+            </ul>
+</div>
+{% endif %}
+<br>
+<br>
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for category, message in messages %}
+<div class="flash {{ category }}">{{ message }}</div>
+{% endfor %}
+{% endwith %}
+{% endblock %}
