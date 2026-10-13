@@ -1,5 +1,14 @@
+"""Helper functions for validating form input values."""
 import re
 from datetime import date
+
+from config import (
+    FIELD_NAME_MUST_BE_INT_ERR,
+    FIELD_NAME_MUST_BE_MAX_LENGTH_ERR,
+    FILED_NAME_MUST_BE_VALID_DATE,
+    FILED_NAME_REQUIRED_ERR,
+    ISBN_INVALID,
+)
 
 
 def validate_int(
@@ -17,12 +26,15 @@ def validate_int(
     if nullable and not value:
         return None
     if not value:
-        return f"{field_name} is required."
+        return FILED_NAME_REQUIRED_ERR.format(filed_name=field_name)
     if max_length and len(value) > max_length:
-        return f"{field_name} must be max {max_length} digits long."
+        return FIELD_NAME_MUST_BE_MAX_LENGTH_ERR.format(
+            filed_name=field_name,
+            max_length=max_length,
+        )
     # int() would also accept "-5", "+5", "1_000" and non-latin digits
     if not re.fullmatch(r"[0-9]+", value):
-        return f"{field_name} must be a whole number."
+        return FIELD_NAME_MUST_BE_INT_ERR.format(filed_name=field_name)
     return None
 
 
@@ -32,18 +44,18 @@ def validate_isbn(
     *,
     nullable: bool = False,
 ) -> None | str:
-    """Validate that a value is an ISBN-10 or ISBN-13 (digits only, no hyphens).
+    """Validate that a value is an ISBN-10 or ISBN-13 (digits only).
 
-    ISBN-10 may end with an X. The check digit is not verified.
+    ISBN-10 may end with an X. That's not verified.
     Does not type convert.
     """
     value = "" if value is None else str(value).strip()
     if nullable and not value:
         return None
     if not value:
-        return f"{field_name} is required."
+        return FILED_NAME_REQUIRED_ERR.format(filed_name=field_name)
     if not re.fullmatch(r"[0-9]{13}|[0-9]{9}[0-9X]", value):
-        return f"{field_name} must be 10 or 13 digits long (ISBN-10 may end with X)."
+        return ISBN_INVALID.format(isbn=field_name)
     return None
 
 
@@ -61,10 +73,10 @@ def validate_date(
     if nullable and not value:
         return None
     if not value:
-        return f"{field_name} is required."
+        return FILED_NAME_REQUIRED_ERR.format(filed_name=field_name)
 
     try:
         date.fromisoformat(value)
     except ValueError:
-        return f"{field_name} must be valid date in format YYYY-MM-DD."
+        return FILED_NAME_MUST_BE_VALID_DATE.format(field_name=field_name)
     return None

@@ -1,5 +1,8 @@
+"""Module to search for books using the Google Books API."""
+
 import os
 import time
+from typing import Any
 
 import requests
 from dotenv import load_dotenv
@@ -8,14 +11,25 @@ load_dotenv()
 
 MAX_RETRIES = 5
 RETRY_DELAY = 0.5
+GOOGLE_BOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"
+GOOGLE_API_STATUS_503 = 503
+ERR_MSG_GOOGLE_RETUREND_503 = (
+    "Google Books API returned 503 (attempt {attempt})."
+)
+ERR_NO_BOOKS_FOUND_FOR_TITLE = "No books found matching that title."
+GOOGLE_API_REQUEST_FAILD = "Google Books API Request failed: {e}"
+GOOGLE_API_UNAVAIULABLE = (
+    "Google Books is temporarily unavailable (tried {attempts}x)."
+)
 
 
 class GoogleBooksUnavailableError(Exception):
     """The Google Books API could not be reached or kept failing."""
 
 
-def search_book_google(title):
-    url = "https://www.googleapis.com/books/v1/volumes"
+def search_book_google(title: str) -> dict[str, Any] | None:
+    """Search for a book by title using the Google Books API."""
+    url = GOOGLE_BOKS_API_URL
     google_books_api_key = os.getenv(
         "GOOGLE_BOOKS_API_KEY",
     )  # optional, stored in .env
@@ -27,10 +41,12 @@ def search_book_google(title):
         for attempt in range(MAX_RETRIES + 1):
             attempts = attempt + 1
             response = requests.get(url, params=params, timeout=10)
-            if response.status_code != 503:
+            if response.status_code != GOOGLE_API_STATUS_503:
                 break
             print(
-                f"Google Books API returned 503 (attempt {attempts}/{MAX_RETRIES + 1}).",
+                ERR_MSG_GOOGLE_RETUREND_503.format(
+                    attempt=attempts / MAX_RETRIES + 1,
+                ),
             )
             if attempt < MAX_RETRIES:
                 time.sleep(RETRY_DELAY)
@@ -39,12 +55,9 @@ def search_book_google(title):
         data = response.json()
 
         if not data.get("items"):
-            print("No books found matching that title.")
+            print(ERR_NO_BOOKS_FOUND_FOR_TITLE)
             return None
 
-        print(
-            f"got {len(data['items'])} results from Google Books API for title '{title}'.",
-        )
         # use first match
         volume_info = data["items"][0]["volumeInfo"]
 
@@ -52,6 +65,7 @@ def search_book_google(title):
         author = volume_info.get("authors", ["Unknown Author"])[0]
         published_date = volume_info.get("publishedDate")
         publication_year = (
+            # comes as YYYY-MM-DD from api, split for year only
             published_date.split("-")[0] if published_date else None
         )
 
@@ -71,10 +85,10 @@ def search_book_google(title):
 
     except (requests.exceptions.RequestException, ValueError) as e:
         # ValueError: response body was not valid JSON
-        print(f"Google Books API Request failed: {e}")
+        print(GOOGLE_API_REQUEST_FAILD.format(e=e))
         raise GoogleBooksUnavailableError(
-            f"Google Books is temporarily unavailable (tried {attempts}x).",
-        ) from None  # hide e, the request would includ API key!
+            GOOGLE_API_UNAVAIULABLE.format(attempts=attempts),
+        ) from None  # hide e, the request would include API key!
 
     return {
         "title": book_title,
@@ -85,7 +99,7 @@ def search_book_google(title):
     }
 
 
-# --- Example Usage ---
+# DEBUG
 if __name__ == "__main__":
     search_term = "Dune"
     print(f"Searching Google Books for: '{search_term}'...\n")

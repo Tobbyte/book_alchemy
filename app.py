@@ -18,7 +18,6 @@ from config import (
     FLASH_BOOK_ADDED,
     FLASH_BOOK_DELETED,
     FLASH_ERR_BOOK_NOT_FOUND,
-    FLASK_APP_SECRET_KEY_KEY,
     FLASSH_ERR_NO_RESULT,
     KEY_NOT_SET_ERR,
     PUBLICATION_YEAR_LENGTH,
@@ -88,7 +87,7 @@ class BookAlchemyApp:
         """Init main app with db and routes."""
         app.config["SQLALCHEMY_DATABASE_URI"] = DB_PATH
         super_secret_key = os.getenv(
-            FLASK_APP_SECRET_KEY_KEY,
+            "SECRET_KEY",
         )  # needed for session (flash messages)
 
         if not super_secret_key:
