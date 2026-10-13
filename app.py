@@ -120,6 +120,22 @@ class BookAlchemyApp:
             sort = "title"
             order_by = (func.lower(Book.title),)
 
+        search_query = request.args.get("search_query", "").strip()
+        if search_query:
+            books = db.session.scalars(
+                select(Book)
+                .join(Book.author)
+                .options(contains_eager(Book.author))
+                .filter(func.lower(Book.title).contains(search_query.lower()))
+                .order_by(*order_by)
+            ).all()
+            return render_template(
+                "home.html",
+                books=books,
+                sort=sort,
+                search_query=search_query,
+            )
+
         books = db.session.scalars(
             select(Book)
             .join(Book.author)
